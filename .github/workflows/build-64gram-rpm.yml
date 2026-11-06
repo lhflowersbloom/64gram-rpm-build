@@ -8,7 +8,8 @@ name: Build 64Gram RPM
 # -bin packages take; the binary is statically linked against Qt, OpenSSL,
 # ffmpeg and WebRTC and only needs the system glib/cairo/pango/fontconfig stack.
 #
-# Trigger: Actions -> this workflow -> Run workflow, or push a build-* tag.
+# Triggers: weekly poll of the upstream release feed (skipped when that version
+# is already published), a workflow_dispatch run, or a build-* tag push.
 
 on:
   workflow_dispatch:
@@ -24,6 +25,9 @@ on:
   push:
     tags:
       - 'build-*'
+  schedule:
+    # Mondays 06:00 UTC: pick up new upstream releases without any manual step.
+    - cron: '0 6 * * 1'
 
 permissions:
   contents: write
@@ -36,25 +40,26 @@ env:
   UPSTREAM: TDesktop-x64/tdesktop
 
 jobs:
-  rpm:
-    name: Build x86_64 RPM
+  check:
+    name: Check upstream release
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      uver: ${{ steps.ver.outputs.uver }}
+      build: ${{ steps.ver.outputs.build }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Resolve version
         id: ver
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '' }}
         run: |
           set -euo pipefail
-          V="${{ github.event_name == 'workflow_dispatch' && inputs.version || '' }}"
+          V="$INPUT_VERSION"
           if [ -z "$V" ] || [ "$V" = "latest" ]; then
             V=$(curl -fsSL "https://api.github.com/repos/${UPSTREAM}/releases/latest" | jq -r .tag_name)
             V="${V#v}"
           fi
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-          echo "Packaging 64Gram $V"
 
           # 64Gram versions are its own (1.2.11); the Telegram Desktop version it
           # is based on (7.3.5) lives in the upstream release commit message and
@@ -62,13 +67,36 @@ jobs:
           UVER=$(curl -fsSL "https://api.github.com/repos/${UPSTREAM}/commits/v${V}" \
             | jq -r '.commit.message' \
             | sed -n 's/.*Upstream version:[[:space:]]*\([0-9][0-9.]*\).*/\1/p' | head -1)
-          echo "upstream-version=${UVER}" >> "$GITHUB_OUTPUT"
-          echo "Upstream Telegram Desktop version: ${UVER:-<unknown, spec default>}"
+
+          # A scheduled run that finds an existing release for this version has
+          # nothing to do; manual and tag runs always rebuild.
+          ALREADY=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            | jq -r '.[].tag_name' | grep -c "^build-${V}-" || true)
+          BUILD=true
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ] && [ "${ALREADY}" -gt 0 ]; then
+            BUILD=false
+          fi
+
+          echo "version=${V}" >> "$GITHUB_OUTPUT"
+          echo "uver=${UVER}" >> "$GITHUB_OUTPUT"
+          echo "build=${BUILD}" >> "$GITHUB_OUTPUT"
+          echo "64Gram ${V} (Telegram Desktop ${UVER:-<spec default>}), build=${BUILD}, existing releases=${ALREADY}"
+
+  rpm:
+    name: Build x86_64 RPM
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Stage files
         run: |
           set -euo pipefail
-          V="${{ steps.ver.outputs.version }}"
+          V="${{ needs.check.outputs.version }}"
           mkdir -p stage dist
 
           URL="https://github.com/${UPSTREAM}/releases/download/v${V}/64Gram_${V}_linux.zip"
@@ -99,8 +127,8 @@ jobs:
         run: |
           set -euo pipefail
           docker run --rm -u 0 \
-            -e VERSION="${{ steps.ver.outputs.version }}" \
-            -e UVER="${{ steps.ver.outputs.upstream-version }}" \
+            -e VERSION="${{ needs.check.outputs.version }}" \
+            -e UVER="${{ needs.check.outputs.uver }}" \
             -v "$PWD:/w" -w /w \
             almalinux:8 bash -lc '
               set -euo pipefail
@@ -173,26 +201,26 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: 64gram-rpm-${{ steps.ver.outputs.version }}-x86_64
+          name: 64gram-rpm-${{ needs.check.outputs.version }}-x86_64
           path: dist/*
           if-no-files-found: error
           retention-days: 14
 
       - name: Publish release
-        if: github.event_name == 'push' || inputs.publish
+        if: github.event_name != 'workflow_dispatch' || inputs.publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="build-${{ steps.ver.outputs.version }}-${GITHUB_RUN_NUMBER}"
+          TAG="build-${{ needs.check.outputs.version }}-${GITHUB_RUN_NUMBER}"
           gh release create "$TAG" dist/* \
-            --title "64Gram ${{ steps.ver.outputs.version }} RPM" \
-            --notes "64Gram ${{ steps.ver.outputs.version }} (Telegram Desktop ${{ steps.ver.outputs.upstream-version }}) repackaged as an RPM for x86_64 (RHEL/Rocky/Alma 8+, Fedora).
+            --title "64Gram ${{ needs.check.outputs.version }} RPM" \
+            --notes "64Gram ${{ needs.check.outputs.version }} (Telegram Desktop ${{ needs.check.outputs.uver }}) repackaged as an RPM for x86_64 (RHEL/Rocky/Alma 8+, Fedora).
 
           Installs as **64gram**, replaces the official \`telegram-desktop\` package (\`Obsoletes\`) and takes over the \`tg://\` / \`tonsite://\` / \`ton://\` handlers.
 
           \`\`\`
-          sudo dnf install ./64gram-${{ steps.ver.outputs.version }}-2.*.x86_64.rpm
+          sudo dnf install ./64gram-${{ needs.check.outputs.version }}-2.*.x86_64.rpm
           \`\`\`
           " \
             --repo "$GITHUB_REPOSITORY"
@@ -201,10 +229,10 @@ jobs:
       - name: Summary
         run: |
           {
-            echo "### 64Gram ${{ steps.ver.outputs.version }} RPM"
+            echo "### 64Gram ${{ needs.check.outputs.version }} RPM"
             echo ""
-            echo "- source: \`${UPSTREAM}\` release v${{ steps.ver.outputs.version }}"
-            echo "- telegram-desktop version advertised: ${{ steps.ver.outputs.upstream-version }}"
+            echo "- source: \`${UPSTREAM}\` release v${{ needs.check.outputs.version }}"
+            echo "- telegram-desktop version advertised: ${{ needs.check.outputs.uver }}"
             echo "- package: \`$(ls dist/*.rpm | xargs -n1 basename)\`"
             if [ -n "${RELEASE_URL:-}" ]; then echo "- release: ${RELEASE_URL}"; fi
           } >> "$GITHUB_STEP_SUMMARY"
