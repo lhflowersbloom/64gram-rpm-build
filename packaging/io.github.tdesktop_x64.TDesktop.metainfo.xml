@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component type="desktop-application">
+    <id>io.github.tdesktop_x64.TDesktop</id>
+    <metadata_license>CC0-1.0</metadata_license>
+    <project_license>GPL-3.0-or-later</project_license>
+    <name>64Gram</name>
+    <summary>Unofficial Telegram Desktop build with extra features</summary>
+    <description>
+        <p>
+            64Gram is an unofficial fork of Telegram Desktop that provides a
+            native x86_64 build with a number of extra options on top of the
+            official client.
+        </p>
+    </description>
+    <launchable type="desktop-id">io.github.tdesktop_x64.TDesktop.desktop</launchable>
+    <url type="homepage">https://github.com/TDesktop-x64/tdesktop</url>
+    <url type="bugtracker">https://github.com/TDesktop-x64/tdesktop/issues</url>
+    <developer id="io.github.tdesktop_x64">
+        <name>64Gram contributors</name>
+    </developer>
+    <content_rating type="oars-1.1"/>
+    <categories>
+        <category>Network</category>
+        <category>InstantMessaging</category>
+        <category>Chat</category>
+    </categories>
+    <provides>
+        <binary>64gram</binary>
+    </provides>
+</component>

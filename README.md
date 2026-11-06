@@ -13,10 +13,12 @@
 从 [Releases](../../releases) 下载后：
 
 ```bash
-sudo dnf install ./64gram-<ver>-1.*.x86_64.rpm
+sudo dnf install ./64gram-<ver>-2.*.x86_64.rpm
 ```
 
-装完在应用菜单里是 **64Gram**，命令行是 `64gram`，`tg://` 链接也会指向它。
+装完在应用菜单里是 **64Gram**，命令行是 `64gram`（也有 `/usr/bin/telegram-desktop` 软链）。
+`tg://`、`tonsite://`、`ton://` 链接都会交给它——因为本包 `Obsoletes: telegram-desktop`，
+官方客户端不会同时存在，所以不存在"两个都声明 tg handler、点链接不知道开哪个"的问题。
 
 卸载：
 
@@ -32,51 +34,73 @@ Actions → **Build 64Gram RPM** → *Run workflow*，`version` 填 `1.2.11` 或
 产物在 workflow 的 artifact 里；勾选 `publish`（默认开）会额外建一个 GitHub Release。
 push `build-*` 形式的 tag 也会触发构建并发布。
 
+构建完会自动做一次**冒烟测试**：在干净的 almalinux:9 容器里真装一遍，断言依赖能解、
+`mimeinfo.cache` 里 `x-scheme-handler/tg` 指向本包。tg:// 能不能跳过来不靠猜。
+
 ## 包内容
 
 | 路径 | 说明 |
 | --- | --- |
 | `/usr/bin/64gram` | 上游 `Telegram` 二进制 |
-| `/usr/share/applications/64gram.desktop` | 菜单项，含 `tg://` / `tonsite://` 处理 |
-| `/usr/share/icons/hicolor/{16,32,48,64,128,256,512}/apps/64gram.png` | 图标 |
+| `/usr/bin/telegram-desktop` | 指向上面的软链，满足按文件名找客户端的脚本 |
+| `/usr/share/applications/io.github.tdesktop_x64.TDesktop.desktop` | 菜单项 + `tg` / `tonsite` / `ton` scheme handler |
+| `/usr/share/dbus-1/services/io.github.tdesktop_x64.TDesktop.service` | DBus 激活（`DBusActivatable=true` 需要） |
+| `/usr/share/metainfo/io.github.tdesktop_x64.TDesktop.metainfo.xml` | AppStream 数据 |
+| `/usr/share/icons/hicolor/{16,32,48,64,128,256,512}/apps/` | `64gram.png`，另外 256/512 各带一个 app-id 别名的软链 |
 | `/usr/share/licenses/64gram/LICENSE` | GPLv3 + OpenSSL 例外 |
+
+### 为什么文件名是 `io.github.tdesktop_x64.TDesktop.*`
+
+二进制里写死了 `QGuiApplication::setDesktopFileName("io.github.tdesktop_x64.TDesktop")`
+（`Telegram/SourceFiles/platform/linux/specific_linux.cpp`）。Wayland 下窗口的 `app_id` 就是它，
+桌面环境拿它去匹配同名的 `.desktop` 才能对上图标、dock 分组和通知归属。四件套（desktop /
+dbus service / metainfo / app_id）必须同名，缺一个就会掉成通用图标。
+
+图标名刻意保留 `64gram` 而不是跟着上游用 `org.telegram.desktop`——后者会和发行版官方
+`telegram-desktop` 包的文件路径撞车。
 
 ## 已知取舍
 
 - **不做 strip，也不打包 `Updater`**：保留二进制原样，自动更新在 `/usr/bin` 下本来就写不进去，
-  升级请走 `dnf`。因此安装包偏大（约 90 MB），和上游 zip 一个量级。
-- **包名与上游冲突面**：二进制叫 `64gram` 而不是 `telegram-desktop`，不会顶掉系统里的官方 Telegram。
-  两者会话数据共用 `~/.local/share/TelegramDesktop`，同一时间只建议开一个。
+  升级请走 `dnf`。因此安装包偏大（约 77 MB），和上游 zip 一个量级。
+- **和官方客户端二选一**：`Obsoletes: telegram-desktop <= 7.3.5` + `Provides: telegram-desktop = 7.3.5`。
+  已装官方版时 `dnf install` 会把它替换掉，这是为了让 `tg://` 有唯一归属。会话数据仍在
+  `~/.local/share/TelegramDesktop`，换回来不会丢。
+- **两个版本号**：包版本是 64Gram 自己的 `1.2.11`，`Provides` 声明的是它基于的 Telegram Desktop
+  版本 `7.3.5`（构建时从上游 release 提交信息里自动解析，解析不到就用 spec 里的默认值）。
 - `Requires` 里显式写了 `libX11` / `libxcb` / `libxkbcommon`，这三个是 Qt 平台插件 dlopen 的，
   不会出现在 ELF 的 `NEEDED` 里；名字取的是 Fedora/RHEL 的包名，openSUSE 上可能需要 `--nodeps`。
 
 ## 仓库结构
 
 ```
-.github/workflows/build-64gram-rpm.yml   # 下载上游 zip → fedora 容器里 rpmbuild → 发布
-packaging/64gram.spec                    # RPM spec（版本用 --define "gver x.y.z" 覆盖）
-packaging/64gram.desktop                 # 桌面入口（图标在构建时从上游拉取）
-
+.github/workflows/build-64gram-rpm.yml                    # 下载上游 zip → rpmbuild → 冒烟测试 → 发布
+packaging/64gram.spec                                     # RPM spec（gver / uver 用 --define 覆盖）
+packaging/io.github.tdesktop_x64.TDesktop.desktop         # 桌面入口
+packaging/io.github.tdesktop_x64.TDesktop.service         # DBus 服务
+packaging/io.github.tdesktop_x64.TDesktop.metainfo.xml    # AppStream 元数据
 ```
+
+图标不放在仓库里，构建时从上游 `Telegram/Resources/art/` 拉取。
 
 手动在本地复现：
 
 ```bash
-# 需要 docker + fedora 镜像
+# 需要 docker
 mkdir -p stage dist
 unzip -o -q 64Gram_1.2.11_linux.zip -d stage
 curl -fLo stage/LICENSE https://raw.githubusercontent.com/TDesktop-x64/tdesktop/dev/LICENSE
-cp packaging/64gram.desktop stage/
+cp packaging/io.github.tdesktop_x64.TDesktop.* stage/
 for sz in 16 32 48 64 128 256 512; do
   curl -fLo "stage/icon${sz}.png" "https://raw.githubusercontent.com/TDesktop-x64/tdesktop/dev/Telegram/Resources/art/icon${sz}.png"
 done
 tar -C stage -czf stage.tgz .
 
-docker run --rm -u 0 -v "$PWD:/w" -w /w fedora:latest bash -lc '
+docker run --rm -u 0 -v "$PWD:/w" -w /w almalinux:8 bash -lc '
   dnf -y -q install rpm-build
   mkdir -p /tmp/r/{SOURCES,SPECS,RPMS,BUILD,BUILDROOT}
   tar -C /tmp/r/SOURCES -xzf /w/stage.tgz
-  rpmbuild -bb --define "_topdir /tmp/r" --define "gver 1.2.11" /w/packaging/64gram.spec
+  rpmbuild -bb --define "_topdir /tmp/r" --define "gver 1.2.11" --define "uver 7.3.5" /w/packaging/64gram.spec
   cp /tmp/r/RPMS/x86_64/*.rpm /w/dist/'
 ```
 

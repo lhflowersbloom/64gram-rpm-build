@@ -56,6 +56,15 @@ jobs:
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "Packaging 64Gram $V"
 
+          # 64Gram versions are its own (1.2.11); the Telegram Desktop version it
+          # is based on (7.3.5) lives in the upstream release commit message and
+          # is what "Provides: telegram-desktop" has to advertise.
+          UVER=$(curl -fsSL "https://api.github.com/repos/${UPSTREAM}/commits/v${V}" \
+            | jq -r '.commit.message' \
+            | sed -n 's/.*Upstream version:[[:space:]]*\([0-9][0-9.]*\).*/\1/p' | head -1)
+          echo "upstream-version=${UVER}" >> "$GITHUB_OUTPUT"
+          echo "Upstream Telegram Desktop version: ${UVER:-<unknown, spec default>}"
+
       - name: Stage files
         run: |
           set -euo pipefail
@@ -74,7 +83,10 @@ jobs:
           curl -fL --retry 3 -o stage/LICENSE \
             "https://raw.githubusercontent.com/${UPSTREAM}/dev/LICENSE"
 
-          cp packaging/64gram.desktop stage/
+          cp packaging/io.github.tdesktop_x64.TDesktop.desktop \
+             packaging/io.github.tdesktop_x64.TDesktop.service \
+             packaging/io.github.tdesktop_x64.TDesktop.metainfo.xml \
+             stage/
           for sz in 16 32 48 64 128 256 512; do
             curl -fL --retry 3 -o "stage/icon${sz}.png" \
               "https://raw.githubusercontent.com/${UPSTREAM}/dev/Telegram/Resources/art/icon${sz}.png"
@@ -88,6 +100,7 @@ jobs:
           set -euo pipefail
           docker run --rm -u 0 \
             -e VERSION="${{ steps.ver.outputs.version }}" \
+            -e UVER="${{ steps.ver.outputs.upstream-version }}" \
             -v "$PWD:/w" -w /w \
             almalinux:8 bash -lc '
               set -euo pipefail
@@ -99,9 +112,12 @@ jobs:
               tar -C /tmp/r/SOURCES -xzf /w/stage.tgz
               ls -lh /tmp/r/SOURCES
 
+              UDEF=""
+              if [ -n "${UVER}" ]; then UDEF="--define uver ${UVER}"; fi
               rpmbuild -bb \
                 --define "_topdir /tmp/r" \
                 --define "gver ${VERSION}" \
+                ${UDEF} \
                 /w/packaging/64gram.spec
 
               mkdir -p /w/dist
@@ -109,23 +125,53 @@ jobs:
               cd /w/dist
               sha256sum *.rpm > SHA256SUMS
 
-              echo "::group::Summary"
-              rpm -qpi *.rpm
-              echo "::endgroup::"
-              echo "::group::Requires"
-              rpm -qp --requires *.rpm
-              echo "::endgroup::"
-              echo "::group::Contents"
-              rpm -qpl *.rpm
-              echo "::endgroup::"
-
               { rpm -qpi *.rpm; echo; echo "### Requires"; rpm -qp --requires *.rpm; \
+                echo; echo "### Provides"; rpm -qp --provides *.rpm; \
                 echo; echo "### Contents"; rpm -qpl *.rpm; } > /w/metadata.md
             '
           ls -lh dist/
 
       - name: Record metadata
         run: cat metadata.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test install
+        # Installs the package into a clean container and asserts the two things
+        # that actually matter: it resolves its dependencies, and tg:// ends up
+        # routed to this application.
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD/dist:/dist:ro" almalinux:9 bash -lc '
+            set -euo pipefail
+            dnf -y -q install desktop-file-utils >/dev/null
+            dnf -y -q install /dist/*.rpm
+
+            echo "--- package ---"
+            rpm -q 64gram
+            test -x /usr/bin/64gram
+            test -L /usr/bin/telegram-desktop
+
+            echo "--- provides / obsoletes ---"
+            rpm -q --provides 64gram | grep -E "^telegram-desktop = "
+            rpm -q --obsoletes 64gram
+
+            echo "--- desktop entry ---"
+            test -f /usr/share/applications/io.github.tdesktop_x64.TDesktop.desktop
+            grep -E "^(Exec|Icon|StartupWMClass|MimeType)=" \
+              /usr/share/applications/io.github.tdesktop_x64.TDesktop.desktop
+
+            echo "--- tg:// routing ---"
+            TG=$(grep "^x-scheme-handler/tg=" /usr/share/applications/mimeinfo.cache || true)
+            echo "${TG:-<not registered>}"
+            case "$TG" in
+              "x-scheme-handler/tg=io.github.tdesktop_x64.TDesktop.desktop"*) ;;
+              *) echo "FAIL: tg:// is not routed to 64gram"; exit 1 ;;
+            esac
+
+            echo "--- dbus / appstream ---"
+            test -f /usr/share/dbus-1/services/io.github.tdesktop_x64.TDesktop.service
+            test -f /usr/share/metainfo/io.github.tdesktop_x64.TDesktop.metainfo.xml
+            echo OK
+          '
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -144,12 +190,12 @@ jobs:
           TAG="build-${{ steps.ver.outputs.version }}-${GITHUB_RUN_NUMBER}"
           gh release create "$TAG" dist/* \
             --title "64Gram ${{ steps.ver.outputs.version }} RPM" \
-            --notes "64Gram ${{ steps.ver.outputs.version }} repackaged as an RPM for x86_64 (RHEL/Rocky/Alma 8+, Fedora).
+            --notes "64Gram ${{ steps.ver.outputs.version }} (Telegram Desktop ${{ steps.ver.outputs.upstream-version }}) repackaged as an RPM for x86_64 (RHEL/Rocky/Alma 8+, Fedora).
 
-          Built on $(date -u +%F) from the upstream release asset, which is scoped to \`v${{ steps.ver.outputs.version }}\`.
+          Installs as **64gram**, replaces the official \`telegram-desktop\` package (\`Obsoletes\`) and takes over the \`tg://\` / \`tonsite://\` / \`ton://\` handlers.
 
           \`\`\`
-          sudo dnf install ./64gram-${{ steps.ver.outputs.version }}-1.*.x86_64.rpm
+          sudo dnf install ./64gram-${{ steps.ver.outputs.version }}-2.*.x86_64.rpm
           \`\`\`
           " \
             --repo "$GITHUB_REPOSITORY"
@@ -161,6 +207,7 @@ jobs:
             echo "### 64Gram ${{ steps.ver.outputs.version }} RPM"
             echo ""
             echo "- source: \`${UPSTREAM}\` release v${{ steps.ver.outputs.version }}"
+            echo "- telegram-desktop version advertised: ${{ steps.ver.outputs.upstream-version }}"
             echo "- package: \`$(ls dist/*.rpm | xargs -n1 basename)\`"
             if [ -n "${RELEASE_URL:-}" ]; then echo "- release: ${RELEASE_URL}"; fi
           } >> "$GITHUB_STEP_SUMMARY"
