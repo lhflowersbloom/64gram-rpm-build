@@ -89,7 +89,7 @@ jobs:
           docker run --rm -u 0 \
             -e VERSION="${{ steps.ver.outputs.version }}" \
             -v "$PWD:/w" -w /w \
-            fedora:latest bash -lc '
+            almalinux:8 bash -lc '
               set -euo pipefail
               dnf -y -q install rpm-build >/dev/null
               rpm --version
@@ -118,8 +118,14 @@ jobs:
               echo "::group::Contents"
               rpm -qpl *.rpm
               echo "::endgroup::"
+
+              { rpm -qpi *.rpm; echo; echo "### Requires"; rpm -qp --requires *.rpm; \
+                echo; echo "### Contents"; rpm -qpl *.rpm; } > /w/metadata.md
             '
           ls -lh dist/
+
+      - name: Record metadata
+        run: cat metadata.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -156,5 +162,5 @@ jobs:
             echo ""
             echo "- source: \`${UPSTREAM}\` release v${{ steps.ver.outputs.version }}"
             echo "- package: \`$(ls dist/*.rpm | xargs -n1 basename)\`"
-            [ -n "${RELEASE_URL:-}" ] && echo "- release: ${RELEASE_URL}"
+            if [ -n "${RELEASE_URL:-}" ]; then echo "- release: ${RELEASE_URL}"; fi
           } >> "$GITHUB_STEP_SUMMARY"

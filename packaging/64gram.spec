@@ -9,7 +9,8 @@
 
 Name:       64gram
 Version:    %{gver}
-Release:    1%{?dist}
+# Deliberately no %{?dist}: one package serves RHEL/Alma/Rocky 8+, Fedora and openSUSE.
+Release:    1
 Summary:    64Gram - unofficial Telegram Desktop build with extra features
 
 License:    GPL-3.0-or-later with exceptions
