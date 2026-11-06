@@ -1,0 +1,21 @@
+[Desktop Entry]
+Version=1.0
+Name=64Gram
+GenericName=Messenger
+Comment=Unofficial Telegram Desktop build with extra features
+Comment[zh_CN]=Telegram Desktop 的非官方增强版本
+Exec=64gram -- %u
+Icon=64gram
+Terminal=false
+Type=Application
+Categories=Network;InstantMessaging;Chat;
+Keywords=telegram;tgram;chat;im;messaging;messenger;sms;tdesktop;64gram;
+StartupNotify=false
+StartupWMClass=TelegramDesktop
+MimeType=x-scheme-handler/tg;x-scheme-handler/tonsite;
+Actions=quit;
+
+[Desktop Action quit]
+Name=Quit
+Name[zh_CN]=退出
+Exec=64gram -quit

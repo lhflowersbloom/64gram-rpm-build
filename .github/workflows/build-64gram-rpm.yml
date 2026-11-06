@@ -1,0 +1,160 @@
+name: Build 64Gram RPM
+
+# Repackages the official 64Gram Linux release (x86_64) into an installable RPM.
+#
+# Why a repack: 64Gram ships Linux only as a raw .zip (Telegram + Updater) built
+# by a private CI image that is not publicly pullable, so there is no public
+# source-build path. Packaging the published binary is the same approach distro
+# -bin packages take; the binary is statically linked against Qt, OpenSSL,
+# ffmpeg and WebRTC and only needs the system glib/cairo/pango/fontconfig stack.
+#
+# Trigger: Actions -> this workflow -> Run workflow, or push a build-* tag.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '64Gram version to package (e.g. 1.2.11) or "latest"'
+        required: false
+        default: latest
+      publish:
+        description: 'Create a GitHub release with the resulting RPM'
+        type: boolean
+        default: true
+  push:
+    tags:
+      - 'build-*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rpm-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UPSTREAM: TDesktop-x64/tdesktop
+
+jobs:
+  rpm:
+    name: Build x86_64 RPM
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        run: |
+          set -euo pipefail
+          V="${{ github.event_name == 'workflow_dispatch' && inputs.version || '' }}"
+          if [ -z "$V" ] || [ "$V" = "latest" ]; then
+            V=$(curl -fsSL "https://api.github.com/repos/${UPSTREAM}/releases/latest" | jq -r .tag_name)
+            V="${V#v}"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Packaging 64Gram $V"
+
+      - name: Stage files
+        run: |
+          set -euo pipefail
+          V="${{ steps.ver.outputs.version }}"
+          mkdir -p stage dist
+
+          URL="https://github.com/${UPSTREAM}/releases/download/v${V}/64Gram_${V}_linux.zip"
+          echo "Downloading $URL"
+          curl -fL --retry 3 --retry-delay 5 -o /tmp/upstream.zip "$URL"
+          sha256sum /tmp/upstream.zip | tee /tmp/upstream.sha256
+
+          unzip -o -q /tmp/upstream.zip -d stage
+          test -f stage/Telegram || { echo "Telegram binary missing from archive"; exit 1; }
+          file stage/Telegram
+
+          curl -fL --retry 3 -o stage/LICENSE \
+            "https://raw.githubusercontent.com/${UPSTREAM}/dev/LICENSE"
+
+          cp packaging/64gram.desktop stage/
+          for sz in 16 32 48 64 128 256 512; do
+            curl -fL --retry 3 -o "stage/icon${sz}.png" \
+              "https://raw.githubusercontent.com/${UPSTREAM}/dev/Telegram/Resources/art/icon${sz}.png"
+          done
+
+          tar -C stage -czf stage.tgz .
+          ls -lh stage.tgz
+
+      - name: Build RPM
+        run: |
+          set -euo pipefail
+          docker run --rm -u 0 \
+            -e VERSION="${{ steps.ver.outputs.version }}" \
+            -v "$PWD:/w" -w /w \
+            fedora:latest bash -lc '
+              set -euo pipefail
+              dnf -y -q install rpm-build >/dev/null
+              rpm --version
+
+              # rpmbuild resolves %{SOURCEn} under <topdir>/SOURCES (uppercase)
+              mkdir -p /tmp/r/SOURCES /tmp/r/SPECS /tmp/r/RPMS /tmp/r/BUILD /tmp/r/BUILDROOT
+              tar -C /tmp/r/SOURCES -xzf /w/stage.tgz
+              ls -lh /tmp/r/SOURCES
+
+              rpmbuild -bb \
+                --define "_topdir /tmp/r" \
+                --define "gver ${VERSION}" \
+                /w/packaging/64gram.spec
+
+              mkdir -p /w/dist
+              cp /tmp/r/RPMS/x86_64/*.rpm /w/dist/
+              cd /w/dist
+              sha256sum *.rpm > SHA256SUMS
+
+              echo "::group::Summary"
+              rpm -qpi *.rpm
+              echo "::endgroup::"
+              echo "::group::Requires"
+              rpm -qp --requires *.rpm
+              echo "::endgroup::"
+              echo "::group::Contents"
+              rpm -qpl *.rpm
+              echo "::endgroup::"
+            '
+          ls -lh dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 64gram-rpm-${{ steps.ver.outputs.version }}-x86_64
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish release
+        if: github.event_name == 'push' || inputs.publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="build-${{ steps.ver.outputs.version }}-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" dist/* \
+            --title "64Gram ${{ steps.ver.outputs.version }} RPM" \
+            --notes "64Gram ${{ steps.ver.outputs.version }} repackaged as an RPM for x86_64 (RHEL/Rocky/Alma 8+, Fedora).
+
+          Built on $(date -u +%F) from the upstream release asset, which is scoped to \`v${{ steps.ver.outputs.version }}\`.
+
+          \`\`\`
+          sudo dnf install ./64gram-${{ steps.ver.outputs.version }}-1.*.x86_64.rpm
+          \`\`\`
+          " \
+            --repo "$GITHUB_REPOSITORY"
+          echo "RELEASE_URL=https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG" >> "$GITHUB_ENV"
+
+      - name: Summary
+        run: |
+          {
+            echo "### 64Gram ${{ steps.ver.outputs.version }} RPM"
+            echo ""
+            echo "- source: \`${UPSTREAM}\` release v${{ steps.ver.outputs.version }}"
+            echo "- package: \`$(ls dist/*.rpm | xargs -n1 basename)\`"
+            [ -n "${RELEASE_URL:-}" ] && echo "- release: ${RELEASE_URL}"
+          } >> "$GITHUB_STEP_SUMMARY"
