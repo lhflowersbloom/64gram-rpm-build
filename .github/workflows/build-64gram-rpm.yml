@@ -112,13 +112,10 @@ jobs:
               tar -C /tmp/r/SOURCES -xzf /w/stage.tgz
               ls -lh /tmp/r/SOURCES
 
-              UDEF=""
-              if [ -n "${UVER}" ]; then UDEF="--define uver ${UVER}"; fi
-              rpmbuild -bb \
-                --define "_topdir /tmp/r" \
-                --define "gver ${VERSION}" \
-                ${UDEF} \
-                /w/packaging/64gram.spec
+              # --define needs "name body" as ONE argument, hence the array.
+              DEFS=(--define "_topdir /tmp/r" --define "gver ${VERSION}")
+              if [ -n "${UVER}" ]; then DEFS+=(--define "uver ${UVER}"); fi
+              rpmbuild -bb "${DEFS[@]}" /w/packaging/64gram.spec
 
               mkdir -p /w/dist
               cp /tmp/r/RPMS/x86_64/*.rpm /w/dist/
