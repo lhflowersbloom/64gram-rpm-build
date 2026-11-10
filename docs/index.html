@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>64Gram RPM for Fedora, RHEL and openSUSE — install with dnf</title>
+<meta name="description" content="Unofficial 64Gram RPM packages for Fedora, RHEL, AlmaLinux, Rocky Linux and openSUSE. Drop-in replacement for telegram-desktop: owns the tg:// handler, ships AppStream data and D-Bus activation. Rebuilt weekly by GitHub Actions.">
+<link rel="canonical" href="https://lhflowersbloom.github.io/64gram-rpm-build/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="64Gram RPM for Fedora, RHEL and openSUSE">
+<meta property="og:description" content="Install 64Gram (unofficial Telegram Desktop fork) from an RPM on Fedora, RHEL, Alma, Rocky and openSUSE. One package, drop-in replacement for telegram-desktop.">
+<meta property="og:url" content="https://lhflowersbloom.github.io/64gram-rpm-build/">
+<meta name="twitter:card" content="summary">
+<style>
+  :root{
+    --bg:#ffffff; --panel:#f6f8fa; --ink:#1f2328; --muted:#59636e;
+    --line:#d1d9e0; --accent:#0969da; --accent-soft:#ddf4ff;
+    --code-bg:#0d1117; --code-ink:#e6edf3;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 var(--sans);}
+  .wrap{max-width:820px;margin:0 auto;padding:0 24px}
+  header{padding:56px 0 8px}
+  .eyebrow{font:600 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  h1{font-size:34px;line-height:1.2;letter-spacing:-.02em;margin:14px 0 12px;font-weight:700}
+  h1 .hl{color:var(--accent)}
+  .lede{font-size:18px;color:var(--muted);margin:0 0 22px;max-width:62ch}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;padding:0;list-style:none}
+  .chips li{font:500 12.5px/1 var(--mono);color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 11px}
+  h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:44px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  p{margin:0 0 14px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .code{position:relative;background:var(--code-bg);border-radius:10px;padding:16px 18px;overflow-x:auto;margin:0 0 14px}
+  .code code{font:13.5px/1.7 var(--mono);color:var(--code-ink);white-space:pre}
+  .code .c{color:#8b949e}
+  .code .p{color:#7ee787}
+  .note{background:var(--accent-soft);border:1px solid #b6e3ff;border-radius:10px;padding:14px 16px;font-size:14.5px;margin:0 0 14px}
+  .note b{font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font:600 12px/1.2 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+  td code,p code,li code{font:12.5px/1.4 var(--mono);background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+  td:first-child{white-space:nowrap}
+  ul{padding-left:20px;margin:0 0 14px}
+  li{margin:0 0 7px}
+  .cta{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 8px}
+  .btn{display:inline-block;background:#1f883d;color:#fff;font-weight:600;font-size:15px;padding:11px 18px;border-radius:8px}
+  .btn:hover{text-decoration:none;background:#1a7f37}
+  .btn.alt{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+  .btn.alt:hover{background:#eef1f4}
+  details{border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:0 0 10px}
+  details summary{cursor:pointer;font-weight:600;font-size:15px}
+  details p{margin:10px 0 0;color:#37414b;font-size:14.5px}
+  footer{margin:56px 0 0;padding:22px 0 60px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+  footer a{color:var(--muted);text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Fedora · RHEL · AlmaLinux · Rocky · openSUSE</div>
+  <h1><span class="hl">64Gram RPM</span> packages for Linux</h1>
+  <p class="lede">Unofficial RPM builds of 64Gram, the x86_64 fork of Telegram Desktop.
+  One package installs on Fedora, RHEL 8+, AlmaLinux, Rocky Linux and openSUSE — and it
+  replaces <code>telegram-desktop</code> cleanly instead of fighting it for your <code>tg://</code> links.</p>
+  <ul class="chips">
+    <li>x86_64</li><li>no dist tag</li><li>rebuilds weekly</li><li>GPL-3.0-or-later</li>
+  </ul>
+</header>
+
+<h2>Install</h2>
+<div class="cta">
+  <a class="btn" href="https://github.com/lhflowersbloom/64gram-rpm-build/releases/latest">Download the latest RPM</a>
+  <a class="btn alt" href="https://github.com/lhflowersbloom/64gram-rpm-build">Source repository</a>
+</div>
+<div class="code"><code><span class="c"># grab the newest package, then install it locally</span>
+sudo dnf install ./64gram-<span class="p">&lt;version&gt;</span>-2.x86_64.rpm</code></div>
+<p>The installed command is <code>64gram</code>, the app menu entry is <strong>64Gram</strong>.
+Upgrades are the same command with a newer file — there is no repository to add.</p>
+<div class="note">
+  <b>It replaces the official client on purpose.</b> The package declares
+  <code>Obsoletes: telegram-desktop</code>, so <code>dnf</code> removes the stock client when you install it.
+  Without that, both packages advertise <code>x-scheme-handler/tg</code> and which app opens a
+  <code>tg://</code> link becomes a coin flip. Your chats stay in <code>~/.local/share/TelegramDesktop</code>,
+  so switching back to the official build later does not lose data.
+</div>
+
+<h2>Why this package exists</h2>
+<ul>
+  <li><strong>64Gram ships Linux as a raw .zip.</strong> No RPM, no repo, no desktop entry — you unpack a binary and get nothing in the app menu. This packages that binary properly.</li>
+  <li><strong>One client per link scheme.</strong> Ties up <code>tg://</code>, <code>tonsite://</code> and <code>ton://</code> in a single owner.</li>
+  <li><strong>No dist tag on purpose.</strong> The binary is statically linked against Qt, OpenSSL, ffmpeg and WebRTC, so a single package serves RHEL/Alma/Rocky 8+, Fedora and openSUSE instead of one build per release.</li>
+  <li><strong>Real desktop integration.</strong> AppStream metadata, D-Bus activation, hicolor icons at seven sizes, and the XDG app id the binary actually asks for (<code>io.github.tdesktop_x64.TDesktop</code>) — so the window maps back to its launcher, the tray icon resolves, and the PulseAudio stream is tagged correctly.</li>
+</ul>
+
+<h2>What gets installed</h2>
+<table>
+  <thead><tr><th>Path</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>/usr/bin/64gram</code></td><td>the upstream <code>Telegram</code> binary</td></tr>
+    <tr><td><code>/usr/bin/telegram-desktop</code></td><td>symlink, for scripts that look the client up by that name</td></tr>
+    <tr><td><code>/usr/share/applications/…TDesktop.desktop</code></td><td>menu entry + <code>tg</code>/<code>tonsite</code>/<code>ton</code> scheme handlers</td></tr>
+    <tr><td><code>/usr/share/dbus-1/services/…service</code></td><td>D-Bus activation</td></tr>
+    <tr><td><code>/usr/share/metainfo/…metainfo.xml</code></td><td>AppStream data (shows up in GNOME Software / KDE Discover)</td></tr>
+    <tr><td><code>/usr/share/icons/hicolor/*/apps/</code></td><td>icons, 16 px to 512 px</td></tr>
+    <tr><td><code>/usr/share/licenses/64gram/LICENSE</code></td><td>GPLv3 + OpenSSL exception</td></tr>
+  </tbody>
+</table>
+<p>Runtime dependencies are only <code>libX11</code>, <code>libxcb</code> and <code>libxkbcommon</code> — everything else is already inside the binary.</p>
+
+<h2>How the packages are built</h2>
+<div class="code"><code>upstream release feed ──▶ new version? ──no──▶ stop
+        │yes
+        ▼
+download the official Linux .zip ──▶ rpmbuild ──▶ install in a clean Fedora container ──▶ GitHub release</code></div>
+<p>A GitHub Actions workflow polls the upstream release feed <strong>every Monday at 06:00 UTC</strong> and publishes
+only when the version is genuinely new. Before anything is released, the RPM is installed with <code>dnf</code> inside a
+fresh Fedora container and checked for its <code>Provides:</code>, <code>Obsoletes:</code> and <code>tg://</code>
+handler registration — so a broken package fails the build instead of reaching you.</p>
+
+<h2>Questions</h2>
+<details>
+  <summary>Is this an official 64Gram or Telegram release?</summary>
+  <p>No. It is a third-party repack of the binary the 64Gram project publishes. Nothing is compiled here and nothing is
+  modified — the packaging is the only original work. 64Gram itself is GPLv3 with an OpenSSL exception, copyright its authors.</p>
+</details>
+<details>
+  <summary>Will it work on CentOS Stream, AlmaLinux or Rocky?</summary>
+  <p>Yes — the release carries no dist tag and does not depend on any Fedora-specific library version, so the same RPM
+  installs on RHEL-family 8 and newer. On EPEL-only systems you may need <code>libxkbcommon</code> from the base repo, which is already present there.</p>
+</details>
+<details>
+  <summary>Can I keep the official Telegram Desktop installed too?</summary>
+  <p>Not recommended, and <code>dnf</code> will not let you by default: this package obsoletes it. Two clients claiming
+  <code>x-scheme-handler/tg</code> makes clicking a link unpredictable. If you want both, use one as a Flatpak.</p>
+</details>
+<details>
+  <summary>How do I uninstall and go back?</summary>
+  <p><code>sudo dnf remove 64gram</code>, then <code>sudo dnf install telegram-desktop</code>. Your message history and
+  session stay in <code>~/.local/share/TelegramDesktop</code> throughout.</p>
+</details>
+
+<footer>
+  Unofficial packaging, not affiliated with 64Gram or Telegram ·
+  <a href="https://github.com/lhflowersbloom/64gram-rpm-build">GitHub</a> ·
+  <a href="https://github.com/TDesktop-x64/tdesktop">upstream 64Gram</a>
+</footer>
+
+</div>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "64Gram RPM",
+      "applicationCategory": "CommunicationApplication",
+      "operatingSystem": "Fedora, RHEL, AlmaLinux, Rocky Linux, openSUSE",
+      "softwareVersion": "1.2.12",
+      "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+      "url": "https://lhflowersbloom.github.io/64gram-rpm-build/",
+      "downloadUrl": "https://github.com/lhflowersbloom/64gram-rpm-build/releases/latest",
+      "description": "Unofficial 64Gram RPM packages for Fedora, RHEL, AlmaLinux, Rocky Linux and openSUSE. Drop-in replacement for telegram-desktop that owns the tg:// handler."
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is this an official 64Gram or Telegram release?",
+          "acceptedAnswer": {"@type": "Answer", "text": "No. It is a third-party repack of the binary the 64Gram project publishes. Nothing is compiled or modified; only the RPM packaging is original work."}
+        },
+        {
+          "@type": "Question",
+          "name": "Will the 64Gram RPM work on CentOS Stream, AlmaLinux or Rocky Linux?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Yes. The package carries no dist tag and does not depend on Fedora-specific library versions, so the same RPM installs on RHEL-family 8 and newer."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I install 64Gram on Fedora with dnf?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Download the latest 64gram-<version>-2.x86_64.rpm from the releases page and run sudo dnf install ./64gram-<version>-2.x86_64.rpm. It obsoletes telegram-desktop and takes over tg:// links."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+</body>
+</html>

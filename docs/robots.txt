@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://lhflowersbloom.github.io/64gram-rpm-build/sitemap.xml
