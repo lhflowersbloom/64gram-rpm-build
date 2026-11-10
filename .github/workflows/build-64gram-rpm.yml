@@ -129,6 +129,7 @@ jobs:
           docker run --rm -u 0 \
             -e VERSION="${{ needs.check.outputs.version }}" \
             -e UVER="${{ needs.check.outputs.uver }}" \
+            -e REL="${GITHUB_RUN_NUMBER}" \
             -v "$PWD:/w" -w /w \
             almalinux:8 bash -lc '
               set -euo pipefail
@@ -143,6 +144,9 @@ jobs:
               # --define needs "name body" as ONE argument, hence the array.
               DEFS=(--define "_topdir /tmp/r" --define "gver ${VERSION}")
               if [ -n "${UVER}" ]; then DEFS+=(--define "uver ${UVER}"); fi
+              # Release = the run number, so a rebuild of the same upstream
+              # version still gets a newer NEVRA instead of a silent duplicate.
+              DEFS+=(--define "rel ${REL}")
               rpmbuild -bb "${DEFS[@]}" /w/packaging/64gram.spec
 
               mkdir -p /w/dist
@@ -220,7 +224,7 @@ jobs:
           Installs as **64gram**, replaces the official \`telegram-desktop\` package (\`Obsoletes\`) and takes over the \`tg://\` / \`tonsite://\` / \`ton://\` handlers.
 
           \`\`\`
-          sudo dnf install ./64gram-${{ needs.check.outputs.version }}-2.*.x86_64.rpm
+          sudo dnf install ./64gram-${{ needs.check.outputs.version }}-${{ github.run_number }}.x86_64.rpm
           \`\`\`
           " \
             --repo "$GITHUB_REPOSITORY"

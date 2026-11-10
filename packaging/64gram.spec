@@ -4,9 +4,15 @@
 %global _build_id_links none
 %global _missing_build_ids_terminate_build 0
 
-# Overridden by the workflow: rpmbuild --define "gver 1.2.11" --define "uver 7.3.5"
+# Overridden by the workflow:
+#   rpmbuild --define "gver 1.2.11" --define "uver 7.3.5" --define "rel <run>"
 %{!?gver:%global gver 1.2.11}
 %{!?uver:%global uver 7.3.5}
+# Release defaults to 2 for a local build. CI passes the workflow run number,
+# so repackaging an already-published version produces a *distinct* NEVRA:
+# two packages with the same version and release but different contents are
+# indistinguishable to dnf, which then refuses to upgrade.
+%{!?rel:%global rel 2}
 
 # XDG identity. The binary calls QGuiApplication::setDesktopFileName() with this
 # exact string (Telegram/SourceFiles/platform/linux/specific_linux.cpp), so the
@@ -18,7 +24,7 @@ Name:       64gram
 Version:    %{gver}
 # Deliberately no dist tag: a single package serves RHEL/Alma/Rocky 8+, Fedora
 # and openSUSE, so the release must not encode the build host.
-Release:    2
+Release:    %{rel}
 Summary:    64Gram - unofficial Telegram Desktop build with extra features
 
 License:    GPL-3.0-or-later with exceptions

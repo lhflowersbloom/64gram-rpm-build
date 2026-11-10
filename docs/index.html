@@ -78,7 +78,7 @@
   <a class="btn alt" href="https://github.com/lhflowersbloom/64gram-rpm-build">Source repository</a>
 </div>
 <div class="code"><code><span class="c"># grab the newest package, then install it locally</span>
-sudo dnf install ./64gram-<span class="p">&lt;version&gt;</span>-2.x86_64.rpm</code></div>
+sudo dnf install ./64gram-<span class="p">&lt;version&gt;</span>-<span class="p">&lt;release&gt;</span>.x86_64.rpm</code></div>
 <p>The installed command is <code>64gram</code>, the app menu entry is <strong>64Gram</strong>.
 Upgrades are the same command with a newer file — there is no repository to add.</p>
 <div class="note">
@@ -183,7 +183,7 @@ handler registration — so a broken package fails the build instead of reaching
         {
           "@type": "Question",
           "name": "How do I install 64Gram on Fedora with dnf?",
-          "acceptedAnswer": {"@type": "Answer", "text": "Download the latest 64gram-<version>-2.x86_64.rpm from the releases page and run sudo dnf install ./64gram-<version>-2.x86_64.rpm. It obsoletes telegram-desktop and takes over tg:// links."}
+          "acceptedAnswer": {"@type": "Answer", "text": "Download the latest 64gram-<version>-<release>.x86_64.rpm from the releases page and run sudo dnf install ./64gram-<version>-<release>.x86_64.rpm. It obsoletes telegram-desktop and takes over tg:// links."}
         }
       ]
     }

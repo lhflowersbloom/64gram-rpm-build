@@ -11,7 +11,7 @@ not to sit next to it fighting over `tg://` links.
 Grab the newest `.rpm` from [Releases](../../releases/latest), then:
 
 ```bash
-sudo dnf install ./64gram-<ver>-2.x86_64.rpm
+sudo dnf install ./64gram-<ver>-<rel>.x86_64.rpm
 ```
 
 Command is `64gram`, menu entry is **64Gram**. There is no repository to add — upgrading means installing a newer file,
@@ -58,7 +58,7 @@ docs/index.html                                           # landing page (GitHub
 ## 中文速览
 
 - 给 64Gram 做 RPM，定位是**替代官方 `telegram-desktop`**：`tg://`、`tonsite://`、`ton://` 全部归它处理。
-- 装：从 Releases 下最新的包，`sudo dnf install ./64gram-<ver>-2.x86_64.rpm`；卸：`sudo dnf remove 64gram`。
+- 装：从 Releases 下最新的包，`sudo dnf install ./64gram-<ver>-<rel>.x86_64.rpm`；卸：`sudo dnf remove 64gram`。
 - 无 dist tag，一个包覆盖 Fedora 与 RHEL 系 8+、openSUSE；依赖只有 `libX11`/`libxcb`/`libxkbcommon`。
 - 每周一自动跟随上游发版；会话数据在 `~/.local/share/TelegramDesktop`，换回官方版不丢。
 
