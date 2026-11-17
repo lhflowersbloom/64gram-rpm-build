@@ -5,9 +5,9 @@
 %global _missing_build_ids_terminate_build 0
 
 # Overridden by the workflow:
-#   rpmbuild --define "gver 1.2.11" --define "uver 7.3.5" --define "rel <run>"
-%{!?gver:%global gver 1.2.11}
-%{!?uver:%global uver 7.3.5}
+#   rpmbuild --define "gver <64gram-ver>" --define "uver <tdesktop-ver>" --define "rel <run>"
+%{!?gver:%global gver 1.2.13}
+%{!?uver:%global uver 7.4.4}
 # Release defaults to 2 for a local build. CI passes the workflow run number,
 # so repackaging an already-published version produces a *distinct* NEVRA:
 # two packages with the same version and release but different contents are
@@ -29,7 +29,7 @@ Summary:    64Gram - unofficial Telegram Desktop build with extra features
 
 License:    GPL-3.0-or-later with exceptions
 URL:        https://github.com/TDesktop-x64/tdesktop
-Source0:    Telegram
+Source0:    64gram
 Source1:    LICENSE
 Source2:    %{appid}.desktop
 Source3:    %{appid}.service
@@ -49,7 +49,9 @@ BuildArch:  x86_64
 # handler, so the two clients must not coexist (two entries claiming
 # x-scheme-handler/tg would make the target of a tg:// click undefined).
 Provides:   telegram-desktop = %{uver}
-Obsoletes:  telegram-desktop <= %{uver}
+# Unbounded on purpose: the version we advertise may lag behind the
+# official package, but the two clients must never be installed together.
+Obsoletes:  telegram-desktop
 
 # Runtime libraries the binary itself links against are picked up automatically
 # from its ELF header. These three are dlopen()ed by the statically linked Qt
@@ -125,6 +127,10 @@ ln -s 64gram.png %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/%{appid}.png
 %{_datadir}/icons/hicolor/512x512/apps/%{appid}.png
 
 %changelog
+* Tue Nov 17 2026 CI <ci@localhost> - 1.2.13-1
+- Rebase on 64Gram 1.2.13 (Telegram Desktop 7.4.4): upstream renamed the
+  client binary to 64Gram and moved its data directory to ~/.local/share/64Gram.
+
 * Fri Nov 06 2026 CI <ci@localhost> - 1.2.11-2
 - Register the real XDG app id (io.github.tdesktop_x64.TDesktop) so the shell
   can map the window to this entry; add D-Bus service and AppStream data.

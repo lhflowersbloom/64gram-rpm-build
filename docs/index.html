@@ -85,8 +85,9 @@ Upgrades are the same command with a newer file — there is no repository to ad
   <b>It replaces the official client on purpose.</b> The package declares
   <code>Obsoletes: telegram-desktop</code>, so <code>dnf</code> removes the stock client when you install it.
   Without that, both packages advertise <code>x-scheme-handler/tg</code> and which app opens a
-  <code>tg://</code> link becomes a coin flip. Your chats stay in <code>~/.local/share/TelegramDesktop</code>,
-  so switching back to the official build later does not lose data.
+  <code>tg://</code> link becomes a coin flip. Since 64Gram 1.2.13 your profile lives in
+  <code>~/.local/share/64Gram</code>; upgrading from an older build means renaming
+  <code>~/.local/share/TelegramDesktop</code> to it once, with the client fully closed.
 </div>
 
 <h2>Why this package exists</h2>
@@ -140,8 +141,9 @@ handler registration — so a broken package fails the build instead of reaching
 </details>
 <details>
   <summary>How do I uninstall and go back?</summary>
-  <p><code>sudo dnf remove 64gram</code>, then <code>sudo dnf install telegram-desktop</code>. Your message history and
-  session stay in <code>~/.local/share/TelegramDesktop</code> throughout.</p>
+  <p><code>sudo dnf remove 64gram</code>, then <code>sudo dnf install telegram-desktop</code>. Your history lives in
+  <code>~/.local/share/64Gram</code>; the official client reads <code>~/.local/share/TelegramDesktop</code>, so rename
+  the folder back if you want it to pick up the same session.</p>
 </details>
 
 <footer>

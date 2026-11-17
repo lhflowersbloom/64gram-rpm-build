@@ -61,12 +61,20 @@ jobs:
             V="${V#v}"
           fi
 
-          # 64Gram versions are its own (1.2.11); the Telegram Desktop version it
-          # is based on (7.3.5) lives in the upstream release commit message and
-          # is what "Provides: telegram-desktop" has to advertise.
-          UVER=$(curl -fsSL "https://api.github.com/repos/${UPSTREAM}/commits/v${V}" \
-            | jq -r '.commit.message' \
-            | sed -n 's/.*Upstream version:[[:space:]]*\([0-9][0-9.]*\).*/\1/p' | head -1)
+          # 64Gram versions are its own (1.2.13); the Telegram Desktop version it
+          # is based on (7.4.4) is what "Provides: telegram-desktop" must
+          # advertise. Upstream states it in the release notes as
+          # "v1.2.13 (TDesktop v7.4.4)"; older releases only had it in the
+          # "Bump to X / Upstream version: Y" commit message.
+          BODY=$(curl -fsSL "https://api.github.com/repos/${UPSTREAM}/releases/tags/v${V}" \
+            | jq -r '.body // ""')
+          UVER=$(printf '%s' "$BODY" \
+            | sed -n 's/.*(TDesktop v\([0-9][0-9.]*\)).*/\1/p' | head -1)
+          if [ -z "$UVER" ]; then
+            UVER=$(curl -fsSL "https://api.github.com/repos/${UPSTREAM}/commits/v${V}" \
+              | jq -r '.commit.message' \
+              | sed -n 's/.*Upstream version:[[:space:]]*\([0-9][0-9.]*\).*/\1/p' | head -1)
+          fi
 
           # A scheduled run that finds an existing release for this version has
           # nothing to do; manual and tag runs always rebuild.
@@ -105,8 +113,15 @@ jobs:
           sha256sum /tmp/upstream.zip | tee /tmp/upstream.sha256
 
           unzip -o -q /tmp/upstream.zip -d stage
-          test -f stage/Telegram || { echo "Telegram binary missing from archive"; exit 1; }
-          file stage/Telegram
+          # 1.2.13 renamed the client binary from "Telegram" to "64Gram", so
+          # look it up instead of hardcoding the name, then normalise it to the
+          # name the spec expects.
+          BIN=$(find stage -maxdepth 3 -type f \( -name Telegram -o -name 64Gram \) | head -1)
+          [ -n "$BIN" ] || { echo "no client binary in archive:"; find stage -maxdepth 3 -type f; exit 1; }
+          echo "client binary: $BIN ($(stat -c %s "$BIN") bytes)"
+          mv -f "$BIN" stage/64gram
+          chmod 0755 stage/64gram
+          file stage/64gram
 
           curl -fL --retry 3 -o stage/LICENSE \
             "https://raw.githubusercontent.com/${UPSTREAM}/dev/LICENSE"
